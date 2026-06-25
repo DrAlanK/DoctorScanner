@@ -13,12 +13,12 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
 from PyQt6.QtGui import QFont, QColor, QAction, QIcon, QDesktopServices
 
-# رفع مشکل بسته شدن ناگهانی Event Loop در ویندوز
+در ویندوز
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # ==========================================
-# UI Component: Collapsible Section (منوی کشویی)
+# UI Component: Collapsible Section
 # ==========================================
 class CollapsibleSection(QWidget):
     def __init__(self, title, is_open=False):
