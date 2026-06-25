@@ -1,7 +1,7 @@
 # DoctorScanner
 
 <p align="center">
-  <img src="assets/logo.png" width="160" height="160" style="border-radius: 50%; box-shadow: 0 0 20px #d4af37;" alt="Doctor Scanner Logo" />
+  <img src="assets/DoctorScanner.png" width="160" height="160" style="border-radius: 50%; box-shadow: 0 0 20px #d4af37;" alt="Doctor Scanner Logo" />
 </p>
 
 <h1 align="center">⚜️ Doctor Scanner Pro ⚜️</h1>
@@ -9,7 +9,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.8%2B-gold?style=for-the-badge&logo=python&logoColor=black" />
   <img src="https://img.shields.io/badge/No--Dependency-Pure%20Core-brightgreen?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Platform-Termux%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge" />
 </p>
 
 <p align="right" dir="rtl">
@@ -39,7 +38,7 @@
 
 ```bash
 # ۱. کلون کردن مخزن پروژه
-git clone [https://github.com/your_username/doctor-scanner.git](https://github.com/your_username/doctor-scanner.git)
+git clone https://github.com/your_username/doctor-scanner.git
 
 # ۲. ورود به پوشه پروژه
 cd doctor-scanner
