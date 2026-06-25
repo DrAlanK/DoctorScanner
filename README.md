@@ -1,1 +1,48 @@
 # DoctorScanner
+
+<p align="center">
+  <img src="assets/logo.png" width="160" height="160" style="border-radius: 50%; box-shadow: 0 0 20px #d4af37;" alt="Doctor Scanner Logo" />
+</p>
+
+<h1 align="center">⚜️ Doctor Scanner Pro ⚜️</h1>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-gold?style=for-the-badge&logo=python&logoColor=black" />
+  <img src="https://img.shields.io/badge/No--Dependency-Pure%20Core-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Platform-Termux%20%7C%20Linux%20%7C%20Windows-blue?style=for-the-badge" />
+</p>
+
+<p align="right" dir="rtl">
+<b>دکتر اسکنر (Doctor Scanner Pro)</b> یک ابزار فوق پیشرفته، پرسرعت و سبک برای تست پایداری و استخراج آی‌پی‌های سالم و تمیز کلادفلر (Cloudflare) در لایه ۴ شبکه (TCP Handshake) است. این پروژه با معماری نان-بلاکنیگ و چندرشته‌ای (Multi-threaded) طراحی شده و به دلیل <b>عدم نیاز به نصب هیچ‌گونه ماژول جانبی (No-Pip)</b>، بهینه‌ترین گزینه برای اجرا روی ترموکس اندروید، سرورهای لینوکس و ویندوز است.
+</p>
+
+---
+
+<h2 align="right" dir="rtl">⚡ ویژگی‌های کلیدی ابزار</h2>
+
+* **تم اختصاصی نئون-طلایی :** رابط کاربری تاریک بسیار مدرن با اسکرول‌بار و المان‌های نئونی اختصاصی.
+* **سیستم پایش موازی (High-Concurrency):** قابلیت تنظیم رشته‌های موازی (Workers) تا ۳۰۰ رید همزمان برای سرعت بی‌سابقه.
+* **تب‌بندی هوشمند دوحالته:**
+    * **اسکن خودکار (Auto Scan):** دارای دو متد *سطحی/سریع* (بازه عمومی تمیز) و *عمیق/جامع* (کل رنج‌های ساختار دیتاسنتر کلادفلر) بدون نیاز به ورودی از طرف کاربر.
+    * **اسکن دستی (Manual Scan):** امکان تایپ مستقیم، کپی رنج‌های CIDR و تک آی‌پی، یا ایمپورت آنی فایل متنی (`.txt`).
+* **کنترلرهای پیشرفته (Custom Steppers):** مدیریت دقیق پورت‌ها، تایم‌اوت (میلی‌ثانیه) و سقف نمونه‌برداری با دکمه‌های کاملاً کاستوم.
+* **سیستم نمونه‌برداری ایمن حافظه (Memory-Safe):** مهار محاسباتی برای جلوگیری از کرش یا لود سنگین رم در رنج‌های بزرگ (مانند `/13`) روی دیوایس‌های ضعیف.
+* **مدیریت خروجی پیشرفته:** امکان کپی تکی آی‌پی، کپی دسته‌جمعی تمام کلین آی‌پی‌ها و دانلود مستقیم فایل خروجی به صورت ساختاریافته.
+
+---
+
+<h2 align="right" dir="rtl">🚀 راهنمای نصب و اجرا</h2>
+
+<p align="right" dir="rtl">
+برای اجرای این اسکنر نیازی به نصب هیچ پکیجی با دستور <code>pip</code> ندارید! سیستم کاملاً بر پایه کتابخانه‌های استاندارد پایتون پیاده‌سازی شده است.
+</p>
+
+```bash
+# ۱. کلون کردن مخزن پروژه
+git clone [https://github.com/your_username/doctor-scanner.git](https://github.com/your_username/doctor-scanner.git)
+
+# ۲. ورود به پوشه پروژه
+cd doctor-scanner
+
+# ۳. اجرای هسته مرکزی اسکنر
+python main.py
