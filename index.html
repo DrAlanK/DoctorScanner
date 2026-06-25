@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Scanner Pro | Advanced IP & Config Tool</title>
+    <style>
+        @font-face {
+            font-family: 'B Nazanin';
+            src: local('B Nazanin'), local('BNazanin');
+        }
+
+        :root {
+            --bg-main: #050505;
+            --bg-card: #0f0f0f;
+            --bg-input: #1a1a1a;
+            --border-color: #332900;
+            --text-main: #f5f5f5;
+            --text-muted: #888888;
+            --gold: #d4af37;
+            --gold-bright: #ffd700;
+            --neon-glow: 0 0 8px rgba(255, 215, 0, 0.4), 0 0 15px rgba(212, 175, 55, 0.2);
+            --neon-glow-strong: 0 0 12px rgba(255, 215, 0, 0.6), 0 0 25px rgba(212, 175, 55, 0.4);
+            --danger: #ff3333;
+            --success: #00ff88;
+            --info: #00ccff;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'B Nazanin', system-ui, -apple-system, sans-serif;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); border-left: 1px solid var(--border-color); }
+        ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gold-bright); }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 950px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--gold);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--neon-glow);
+        }
+
+        /* Header */
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-bright); box-shadow: var(--neon-glow); object-fit: cover; }
+        .brand h2 { margin: 0; font-size: 20px; color: var(--gold-bright); text-shadow: var(--neon-glow); letter-spacing: 1px; }
+
+        /* Settings Grid */
+        .settings-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            background-color: rgba(212, 175, 55, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 14px; color: var(--gold); font-weight: bold; }
+
+        /* Ports Grid */
+        .ports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            gap: 6px;
+            background-color: var(--bg-input);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .port-lbl { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+        .port-lbl input[type="checkbox"] { accent-color: var(--gold-bright); cursor: pointer; }
+
+        /* Speedtest Toggle */
+        .speedtest-toggle {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 204, 255, 0.05);
+            border: 1px solid var(--info);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+        .speedtest-toggle input { accent-color: var(--info); scale: 1.2; }
+        .speedtest-toggle span { color: var(--info); font-size: 13px; font-weight: bold; }
+
+        /* Number Controls */
+        .number-control {
+            display: flex;
+            align-items: center;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .number-control:focus-within { border-color: var(--gold-bright); box-shadow: var(--neon-glow); }
+        .number-control button { background: transparent; color: var(--gold); border: none; padding: 6px 12px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .number-control button:hover { background-color: rgba(255, 215, 0, 0.1); }
+        .number-control input { flex: 1; text-align: center; border: none; background: transparent; color: var(--text-main); font-size: 14px; outline: none; font-weight: bold; }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Tabs */
+        .tabs-header { display: flex; border-bottom: 2px solid var(--border-color); gap: 5px; flex-wrap: wrap; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 8px 12px; cursor: pointer; font-size: 15px; font-weight: bold; transition: 0.3s; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab-btn.active { color: var(--gold-bright); border-bottom-color: var(--gold-bright); text-shadow: var(--neon-glow); }
+        .tab-content { display: none; padding: 15px 0; }
+        .tab-content.active { display: block; }
+
+        /* Radio Boxes */
+        .auto-options { display: flex; gap: 10px; flex-wrap: wrap; }
+        .radio-box { flex: 1; min-width: 180px; border: 1px solid var(--border-color); background-color: var(--bg-input); padding: 12px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .radio-box:hover { border-color: var(--gold); box-shadow: 0 0 8px rgba(212, 175, 55, 0.1); }
+        .radio-box input[type="radio"] { accent-color: var(--gold-bright); scale: 1.1; }
+        .radio-text div:first-child { font-weight: bold; font-size: 14px; color: var(--gold); margin-bottom: 4px; }
+        .radio-text div:last-child { font-size: 12px; color: var(--text-muted); }
+
+        /* Textareas */
+        textarea { width: 100%; height: 110px; background-color: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 13px; resize: vertical; outline: none; }
+        textarea:focus { border-color: var(--gold-bright); box-shadow: var(--neon-glow); }
+
+        /* Buttons */
+        .action-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .btn { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.3s; flex: 1; min-width: 130px; text-align: center; }
+        .btn-primary { background-color: var(--gold); color: #000; box-shadow: var(--neon-glow); }
+        .btn-primary:hover { background-color: var(--gold-bright); box-shadow: var(--neon-glow-strong); }
+        .btn-primary:disabled { background-color: #444; color: #888; box-shadow: none; cursor: not-allowed; }
+        .btn-danger { background-color: rgba(255, 51, 51, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+        .btn-secondary { background-color: #222; color: var(--gold); border: 1px solid var(--border-color); }
+        
+        /* Stats & Tables */
+        .status-container { margin: 15px 0; padding: 10px; background: rgba(212, 175, 55, 0.05); border-radius: 8px; border: 1px dashed var(--gold); text-align: center; font-size: 14px; color: var(--gold-bright); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin-bottom: 15px; text-align: center; }
+        .stat-card { background-color: var(--bg-input); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; }
+        .stat-card div:first-child { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-card div:last-child { font-size: 20px; font-weight: bold; color: var(--text-main); }
+
+        .table-container { width: 100%; overflow-x: auto; max-height: 350px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--bg-input); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 500px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #111; color: var(--gold); position: sticky; top: 0; z-index: 5; }
+        tr:hover { background-color: rgba(212, 175, 55, 0.05); }
+        
+        .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .badge-fast { background-color: rgba(0, 255, 136, 0.15); color: var(--success); border: 1px solid var(--success); }
+        .badge-slow { background-color: rgba(255, 215, 0, 0.15); color: var(--gold-bright); border: 1px solid var(--gold); }
+        .badge-speed { background-color: rgba(0, 204, 255, 0.15); color: var(--info); border: 1px solid var(--info); }
+
+        /* Footer */
+        footer { margin-top: 20px; width: 100%; max-width: 950px; padding: 15px; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-card); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .footer-links a { color: var(--gold); text-decoration: none; font-size: 14px; font-weight: bold; margin-left: 10px; }
+        .about-section { color: var(--text-muted); font-size: 13px; font-weight: bold; }
+
+        @media (max-width: 600px) {
+            .header-top { justify-content: center; text-align: center; }
+            .tabs-header { justify-content: center; }
+            .radio-box { width: 100%; }
+            .btn { width: 100%; }
+            th, td { padding: 8px 5px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wrapper">
+        <div class="header-top">
+            <div class="brand">
+                <img src="https://raw.githubusercontent.com/your_username/doctor-scanner/main/assets/logo.png" alt="Logo" id="appLogo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMjIyIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNkNGFmMzciIGZvbnQtc2l6ZT0iMTBweCI+TE9HTzwvdGV4dD48L3N2Zz4='">
+                <h2>Doctor Scanner Pro</h2>
+            </div>
+            <div style="color: var(--text-muted); font-size: 13px;">پایشگر و ابزار تزریق هوشمند شبکه</div>
+        </div>
+
+        <div class="settings-panel">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>پورت‌های هدف شبکه (انتخاب چندگانه)</label>
+                <div class="ports-grid" id="portsContainer">
+                    <label class="port-lbl"><input type="checkbox" value="443" checked> 443</label>
+                    <label class="port-lbl"><input type="checkbox" value="8443"> 8443</label>
+                    <label class="port-lbl"><input type="checkbox" value="2053"> 2053</label>
+                    <label class="port-lbl"><input type="checkbox" value="2083"> 2083</label>
+                    <label class="port-lbl"><input type="checkbox" value="2087"> 2087</label>
+                    <label class="port-lbl"><input type="checkbox" value="2096"> 2096</label>
+                    <label class="port-lbl"><input type="checkbox" value="80" checked> 80</label>
+                    <label class="port-lbl"><input type="checkbox" value="8080"> 8080</label>
+                    <label class="port-lbl"><input type="checkbox" value="8880"> 8880</label>
+                    <label class="port-lbl"><input type="checkbox" value="2052"> 2052</label>
+                    <label class="port-lbl"><input type="checkbox" value="2082"> 2082</label>
+                    <label class="port-lbl"><input type="checkbox" value="2086"> 2086</label>
+                    <label class="port-lbl"><input type="checkbox" value="2095"> 2095</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>تعداد رشته (Workers)</label>
+                <div class="number-control">
+                    <button type="button" onclick="stepNum('workerCount', -5)">-</button>
+                    <input type="number" id="workerCount" value="60" min="1" max="300">
+                    <button type="button" onclick="stepNum('workerCount', 5)">+</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>تایم‌اوت پینگ (ms)</label>
+                <div class="number-control">
+                    <button type="button" onclick="stepNum('timeoutMs', -100)">-</button>
+                    <input type="number" id="timeoutMs" value="1200" min="100" max="10000">
+                    <button type="button" onclick="stepNum('timeoutMs', 100)">+</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>حداکثر تست آی‌پی</label>
+                <div class="number-control">
+                    <button type="button" onclick="stepNum('maxIpCount', -10)">-</button>
+                    <input type="number" id="maxIpCount" value="80" min="5" max="2000">
+                    <button type="button" onclick="stepNum('maxIpCount', 10)">+</button>
+                </div>
+            </div>
+
+            <label class="speedtest-toggle">
+                <input type="checkbox" id="enableSpeedTest">
+                <span>تست پیشرفته آپلود و دانلود (غربالگری دقیق بر اساس سرعت)</span>
+            </label>
+        </div>
+
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('autoTab', this)">اسکن هوشمند</button>
+                <button class="tab-btn" onclick="switchTab('manualTab', this)">ورود دستی / فایل</button>
+                <button class="tab-btn" onclick="switchTab('injectTab', this)" style="color: var(--info);">💉 تزریق به کانفیگ</button>
+            </div>
+
+            <div id="autoTab" class="tab-content active">
+                <div class="auto-options">
+                    <label class="radio-box">
+                        <input type="radio" name="autoModeType" value="surface" checked>
+                        <div class="radio-text">
+                            <div>اسکن سطحی (سریع)</div>
+                            <div>بهترین رنج‌های عمومی کلادفلر</div>
+                        </div>
+                    </label>
+                    <label class="radio-box">
+                        <input type="radio" name="autoModeType" value="deep">
+                        <div class="radio-text">
+                            <div>اسکن عمیق (جامع)</div>
+                            <div>جستجو در کل آی‌پی‌های دیتاسنتر</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div id="manualTab" class="tab-content">
+                <div class="form-group">
+                    <label>آی‌پی‌ها یا رنج‌های CIDR را وارد کنید:</label>
+                    <textarea id="manualIpsInput" placeholder="مثال:&#10;104.16.0.1&#10;172.64.0.0/24"></textarea>
+                </div>
+            </div>
+
+            <div id="injectTab" class="tab-content">
+                <div class="form-group">
+                    <label style="color: var(--info);">لینک کانفیگ‌های خود را وارد کنید (پشتیبانی از تمام پروتکل‌ها):</label>
+                    <p style="font-size: 12px; color: var(--text-muted); margin: 0;">پشتیبانی کامل از: <b style="color: var(--gold-bright);">VLESS, VMess, Trojan, SS, Socks, HTTP, TUIC, Hysteria</b>. سیستم، پورت کانفیگ شما را می‌خواند و بهترین آی‌پی اسکن شده روی همان پورت را به صورت کاملاً تمیز جایگزین می‌کند.</p>
+                    <textarea id="configInput" placeholder="vless://uuid@host:port?type=ws...&#10;ss://base64@host:port..."></textarea>
+                </div>
+                <div class="action-row" style="margin-top: 10px; margin-bottom: 10px;">
+                    <button class="btn" style="background-color: var(--info); color: #000;" onclick="injectConfigs()">💉 تزریق هوشمند آی‌پی‌ها</button>
+                </div>
+                <div class="form-group">
+                    <label>کانفیگ‌های تمیز شده و آماده استفاده:</label>
+                    <textarea id="configOutput" readonly style="border-color: var(--info);"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-row" id="mainActions">
+            <button id="startBtn" class="btn btn-primary" onclick="executeScan()">⚡ شروع اسکن شبکـــه</button>
+            <button class="btn btn-danger" onclick="clearResults()">🗑️ پاکسازی نتایج</button>
+        </div>
+
+        <div class="status-container" id="statusBox">وضعیت: منتظر دریافت دستورات...</div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div>کل بررسی شده</div><div id="statTotal">0</div></div>
+            <div class="stat-card"><div>سالم و فعال</div><div id="statAlive" style="color: var(--success);">0</div></div>
+            <div class="stat-card"><div>نرخ موفقیت</div><div id="statRate">0%</div></div>
+        </div>
+
+        <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+                <h3 style="margin: 0; color: var(--gold); font-size: 16px;">📋 لیست سرورهای فعال</h3>
+                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; min-width: auto;" onclick="downloadTxtFile()">💾 دانلود TXT</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>آدرس آی‌پی</th>
+                            <th>پورت</th>
+                            <th>پینگ</th>
+                            <th>دانلود</th>
+                            <th>آپلود</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <tr><td colspan="5" style="color: var(--text-muted); padding: 20px;">داده‌ای وجود ندارد.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-links">
+            <a href="https://t.me/Doctor_Scanner" target="_blank">📢 کانال پروژه</a>
+            <span style="color: var(--border-color)">|</span>
+            <a href="https://t.me/Dr_A_88" target="_blank">👨‍💻 پشتیبانی</a>
+        </div>
+    </footer>
+
+    <script>
+        let currentTab = 'autoTab';
+        let aliveIpsGlobal = [];
+
+        function stepNum(id, step) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) || 0;
+            let min = parseInt(input.getAttribute('min')) || 0;
+            let max = parseInt(input.getAttribute('max')) || 10000;
+            let newVal = val + step;
+            if (newVal >= min && newVal <= max) input.value = newVal;
+        }
+
+        function switchTab(tabId, element) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            element.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            
+            document.getElementById('mainActions').style.display = tabId === 'injectTab' ? 'none' : 'flex';
+        }
+
+        function clearResults() {
+            aliveIpsGlobal = [];
+            document.getElementById('resultsBody').innerHTML = `<tr><td colspan="5" style="color: var(--text-muted); padding: 20px;">داده‌ای وجود ندارد.</td></tr>`;
+            document.getElementById('statTotal').innerText = '0';
+            document.getElementById('statAlive').innerText = '0';
+            document.getElementById('statRate').innerText = '0%';
+            document.getElementById('statusBox').innerText = 'نتایج جدول ریست شدند.';
+            document.getElementById('configOutput').value = '';
+        }
+
+        function getSelectedPorts() {
+            const checkboxes = document.querySelectorAll('#portsContainer input[type="checkbox"]:checked');
+            let ports = [];
+            checkboxes.forEach((cb) => ports.push(parseInt(cb.value)));
+            return ports.length > 0 ? ports : [443];
+        }
+
+        async function executeScan() {
+            const startBtn = document.getElementById('startBtn');
+            const statusBox = document.getElementById('statusBox');
+            
+            let payload = {
+                mode: currentTab === 'autoTab' ? 'auto' : 'manual',
+                ports: getSelectedPorts(),
+                workers: parseInt(document.getElementById('workerCount').value),
+                timeout: parseInt(document.getElementById('timeoutMs').value),
+                max_count: parseInt(document.getElementById('maxIpCount').value),
+                auto_type: document.querySelector('input[name="autoModeType"]:checked').value,
+                manual_data: document.getElementById('manualIpsInput').value,
+                do_speedtest: document.getElementById('enableSpeedTest').checked
+            };
+
+            startBtn.disabled = true;
+            statusBox.innerText = payload.do_speedtest ? '⏳ در حال اسکن و بررسی پیشرفته سرعت (لطفاً صبور باشید)...' : '⏳ در حال شخم زدن ساب‌نت‌ها...';
+            
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) throw new Error('خطا در سرور');
+                const data = await response.json();
+                
+                document.getElementById('statTotal').innerText = data.total_scanned || 0;
+                aliveIpsGlobal = data.results || [];
+                document.getElementById('statAlive').innerText = aliveIpsGlobal.length;
+                document.getElementById('statRate').innerText = data.total_scanned > 0 ? Math.round((aliveIpsGlobal.length / data.total_scanned) * 100) + '%' : '0%';
+
+                const tbody = document.getElementById('resultsBody');
+                tbody.innerHTML = '';
+
+                if (aliveIpsGlobal.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="color: var(--danger); padding: 20px;">هیچ آی‌پـی سالمی روی این پورت‌ها پیدا نشد!</td></tr>`;
+                    statusBox.innerText = '❌ عملیات بدون نتیجه پایان یافت.';
+                } else {
+                    aliveIpsGlobal.forEach((item) => {
+                        const tr = document.createElement('tr');
+                        const pingClass = item.ping < 600 ? 'badge-fast' : 'badge-slow';
+                        
+                        let speedData = '';
+                        if(payload.do_speedtest) {
+                            speedData = `<td dir="ltr"><span class="badge badge-speed">↓ ${item.dl_speed} Mbps</span></td>
+                                         <td dir="ltr"><span class="badge badge-speed">↑ ${item.ul_speed} Mbps</span></td>`;
+                        } else {
+                            speedData = `<td style="color:var(--text-muted)">-</td><td style="color:var(--text-muted)">-</td>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td dir="ltr" style="font-weight: bold; color: var(--text-main);">${item.ip}</td>
+                            <td><code style="color: var(--gold-bright);">${item.port}</code></td>
+                            <td><span class="badge ${pingClass}">${item.ping} ms</span></td>
+                            ${speedData}
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    statusBox.innerText = `✅ اسکن با موفقیت تکمیل شد!`;
+                }
+            } catch (err) {
+                statusBox.innerText = '❌ خطای ارتباط با سرور پایتون!';
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        async function injectConfigs() {
+            const configs = document.getElementById('configInput').value;
+            const outputBox = document.getElementById('configOutput');
+            
+            if (!configs.trim()) return alert('لطفاً کانفیگ‌ها را وارد کنید.');
+            if (aliveIpsGlobal.length === 0) return alert('شما هنوز هیچ آی‌پی سالمی ندارید! ابتدا یک اسکن انجام دهید.');
+
+            outputBox.value = "در حال تحلیل پروتکل‌ها و تزریق هوشمند آی‌پی...";
+            
+            try {
+                const response = await fetch('/api/inject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ configs: configs, ips: aliveIpsGlobal })
+                });
+                const data = await response.json();
+                outputBox.value = data.injected;
+            } catch (err) {
+                outputBox.value = "خطا در پردازش کانفیگ‌ها.";
+            }
+        }
+
+        function downloadTxtFile() {
+            if (aliveIpsGlobal.length === 0) return alert('داده‌ای برای دانلود نیست!');
+            const textContent = aliveIpsGlobal.map(i => `${i.ip}:${i.port} [Ping: ${i.ping}ms]`).join('\n');
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `doctor_scanner_ips_${Date.now()}.txt`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
