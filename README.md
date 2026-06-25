@@ -1,7 +1,7 @@
 # DoctorScanner
 
 <p align="center">
-  <img src=".doctor-scanner/assest/DoctorScanner.png" width="160" height="160" style="border-radius: 50%; box-shadow: 0 0 20px #d4af37;" alt="Doctor Scanner Logo" />
+  <img src=".doctor-scanner/assets/DoctorScanner.png" width="160" height="160" style="border-radius: 50%; box-shadow: 0 0 20px #d4af37;" alt="Doctor Scanner Logo" />
 </p>
 
 <h1 align="center">⚜️ Doctor Scanner Pro ⚜️</h1>
