@@ -188,7 +188,25 @@
         .btn-danger { background-color: rgba(255, 51, 51, 0.1); color: var(--danger); border: 1px solid var(--danger); }
         .btn-secondary { background-color: #222; color: var(--gold); border: 1px solid var(--border-color); }
         
-        /* Progress Bar (NEW) */
+        /* Single Copy Button */
+        .btn-copy-mini {
+            background-color: transparent;
+            color: var(--gold);
+            border: 1px solid var(--gold);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: bold;
+        }
+        .btn-copy-mini:hover {
+            background-color: var(--gold);
+            color: #000;
+            box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+        }
+
+        /* Progress Bar */
         .progress-container { width: 100%; height: 8px; background-color: var(--bg-input); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); margin-top: 15px; display: none; }
         .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); transition: width 0.2s linear; box-shadow: var(--neon-glow); }
         .progress-text { text-align: center; font-size: 12px; color: var(--gold-bright); margin-top: 6px; display: none; font-weight: bold; letter-spacing: 1px;}
@@ -359,9 +377,12 @@
         </div>
 
         <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; color: var(--gold); font-size: 16px;">📋 لیست سرورهای فعال</h3>
-                <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; min-width: auto;" onclick="downloadTxtFile()">💾 دانلود TXT</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; min-width: auto; background-color: var(--bg-card);" onclick="copyAllIps()">📋 کپی همه</button>
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; min-width: auto;" onclick="downloadTxtFile()">💾 خروجی TXT</button>
+                </div>
             </div>
             <div class="table-container">
                 <table>
@@ -435,10 +456,46 @@
             return ports.length > 0 ? ports : [443];
         }
 
+        // تابع کپی کردن یک آی‌پی خاص
+        async function copySingleIp(text, btnElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = btnElement.innerText;
+                btnElement.innerText = '✔️';
+                btnElement.style.backgroundColor = 'var(--success)';
+                btnElement.style.color = '#000';
+                btnElement.style.borderColor = 'var(--success)';
+                
+                setTimeout(() => {
+                    btnElement.innerText = originalText;
+                    btnElement.style.backgroundColor = 'transparent';
+                    btnElement.style.color = 'var(--gold)';
+                    btnElement.style.borderColor = 'var(--gold)';
+                }, 1500);
+            } catch (err) {
+                alert('خطا در کپی کردن!');
+            }
+        }
+
+        // تابع کپی کردن کل آی‌پی‌ها
+        async function copyAllIps() {
+            if (aliveIpsGlobal.length === 0) return alert('شما هنوز هیچ آی‌پی سالمی برای کپی کردن ندارید!');
+            
+            let sortedIps = [...aliveIpsGlobal].sort((a, b) => b.dl_speed - a.dl_speed || a.ping - b.ping);
+            const textContent = sortedIps.map(i => `${i.ip}:${i.port}`).join('\n');
+            
+            try {
+                await navigator.clipboard.writeText(textContent);
+                alert(`✅ ${aliveIpsGlobal.length} آی‌پی با موفقیت کپی شد!`);
+            } catch (err) {
+                alert('مرورگر شما اجازه دسترسی به کلیپ‌بورد را نمی‌دهد.');
+            }
+        }
+
         function renderSingleResult(item, doSpeedTest) {
             const tbody = document.getElementById('resultsBody');
             if (tbody.innerHTML.includes("داده‌ای وجود ندارد")) {
-                tbody.innerHTML = ''; // پاک کردن متن اولیه
+                tbody.innerHTML = '';
             }
 
             const tr = document.createElement('tr');
@@ -453,12 +510,16 @@
             }
 
             tr.innerHTML = `
-                <td dir="ltr" style="font-weight: bold; color: var(--text-main);">${item.ip}</td>
+                <td dir="ltr">
+                    <div style="display: flex; justify-content: space-between; align-items: center; max-width: 150px; margin: 0 auto;">
+                        <button class="btn-copy-mini" onclick="copySingleIp('${item.ip}:${item.port}', this)">کپی</button>
+                        <span style="font-weight: bold; color: var(--text-main); margin-left: 8px;">${item.ip}</span>
+                    </div>
+                </td>
                 <td><code style="color: var(--gold-bright);">${item.port}</code></td>
                 <td><span class="badge ${pingClass}">${item.ping} ms</span></td>
                 ${speedData}
             `;
-            // آی‌پی جدید رو در صدر جدول اضافه می‌کنه
             tbody.insertBefore(tr, tbody.firstChild);
         }
 
@@ -466,7 +527,6 @@
             const startBtn = document.getElementById('startBtn');
             const statusBox = document.getElementById('statusBox');
             
-            // لغو اسکن قبلی اگه هنوز در جریانه
             if (scanController) scanController.abort();
             scanController = new AbortController();
             
@@ -481,7 +541,6 @@
                 do_speedtest: document.getElementById('enableSpeedTest').checked
             };
 
-            // ریست UI برای اسکن جدید
             startBtn.disabled = true;
             aliveIpsGlobal = [];
             document.getElementById('resultsBody').innerHTML = '';
@@ -506,7 +565,6 @@
                 
                 if (!response.ok) throw new Error('خطا در سرور');
                 
-                // خواندن اطلاعات استریم شده خط به خط (NDJSON)
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let buffer = '';
@@ -517,19 +575,17 @@
                     
                     buffer += decoder.decode(value, { stream: true });
                     let lines = buffer.split('\n');
-                    buffer = lines.pop(); // خط آخر که ممکنه ناقص باشه رو نگه میداریم برای چرخه بعد
+                    buffer = lines.pop();
                     
                     for (let line of lines) {
                         if (line.trim()) {
                             let data = JSON.parse(line);
                             
-                            // آپدیت نوار وضعیت
                             let percent = Math.round((data.completed / data.total) * 100);
                             document.getElementById('progressBar').style.width = percent + '%';
                             document.getElementById('progressText').innerText = `${data.completed} / ${data.total} (${percent}%)`;
                             document.getElementById('statTotal').innerText = data.completed;
                             
-                            // اگه آی‌پی سالمی پیدا شد
                             if (data.result) {
                                 aliveIpsGlobal.push(data.result);
                                 document.getElementById('statAlive').innerText = aliveIpsGlobal.length;
@@ -582,8 +638,7 @@
         }
 
         function downloadTxtFile() {
-            if (aliveIpsGlobal.length === 0) return alert('داده‌ای برای دانلود نیست!');
-            // مرتب‌سازی قبل از دانلود بر اساس سرعت دانلود (یا پینگ اگر تست سرعت خاموش بود)
+            if (aliveIpsGlobal.length === 0) return alert('داده‌ای برای خروجی گرفتن وجود ندارد!');
             let sortedIps = [...aliveIpsGlobal].sort((a, b) => b.dl_speed - a.dl_speed || a.ping - b.ping);
             
             const textContent = sortedIps.map(i => `${i.ip}:${i.port} [Ping: ${i.ping}ms | DL: ${i.dl_speed}Mbps | UL: ${i.ul_speed}Mbps]`).join('\n');
