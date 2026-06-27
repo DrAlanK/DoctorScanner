@@ -14,11 +14,8 @@ import concurrent.futures
 
 PORT = 8080
 
-SURFACE_RANGES = [
-    "104.16.0.0/13", "172.64.0.0/13", "108.162.192.0/18"
-]
-
-DEEP_RANGES = [
+# لیست کامل ۱۵ بلاک رسمی کلادفلر
+CLOUDFLARE_ALL_RANGES = [
     "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22",
     "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
     "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22",
@@ -26,27 +23,55 @@ DEEP_RANGES = [
     "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
 ]
 
+# رنج‌های طلایی و پرکاربردتر برای اسکن سطحی (سریع)
+SURFACE_BASE_RANGES = [
+    "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "188.114.96.0/20", "162.158.0.0/15"
+]
+
+# --- تابع تبدیل رنج‌های بزرگ به هزاران ساب‌نت /24 ---
+def expand_to_24_subnets(cidrs):
+    subnets_24 = []
+    for cidr in cidrs:
+        try:
+            network = ipaddress.IPv4Network(cidr)
+            if network.prefixlen <= 24:
+                # شکستن رنج‌های بزرگ به /24
+                subnets_24.extend(list(network.subnets(new_prefix=24)))
+            else:
+                subnets_24.append(network)
+        except Exception:
+            continue
+    return subnets_24
+
+# تولید هزاران رنج در زمان اجرای اولیه برنامه (بسیار سریع)
+print("⏳ در حال تولید هزاران ساب‌نت کلادفلر...")
+SURFACE_SUBNETS_24 = expand_to_24_subnets(SURFACE_BASE_RANGES)
+DEEP_SUBNETS_24 = expand_to_24_subnets(CLOUDFLARE_ALL_RANGES)
+print(f"✅ ساب‌نت‌های اسکن سطحی: {len(SURFACE_SUBNETS_24)} رنج /24 آماده شد.")
+print(f"✅ ساب‌نت‌های اسکن عمیق: {len(DEEP_SUBNETS_24)} رنج /24 آماده شد.")
+
 # ----------------- Core Network Functions ----------------- #
 
-def sample_ips_from_subnets(subnets, total_needed):
+def sample_ips_from_subnets(subnets_list, total_needed):
     sampled_ips = set()
-    networks = []
-    for block in subnets:
-        try:
-            networks.append(ipaddress.IPv4Network(block.strip()))
-        except: continue
+    if not subnets_list: return []
     
-    if not networks: return []
-    max_attempts = total_needed * 5
+    max_attempts = total_needed * 10
     attempts = 0
+    
     while len(sampled_ips) < total_needed and attempts < max_attempts:
         attempts += 1
-        net = random.choice(networks)
+        # ۱. انتخاب کاملا رندوم یک ساب‌نت /24 از بین هزاران ساب‌نت
+        net = random.choice(subnets_list)
+        
+        # ۲. انتخاب یک آی‌پی رندوم از داخل همان ساب‌نت
         net_int = int(net.network_address)
         broad_int = int(net.broadcast_address)
+        
         if broad_int - net_int > 2:
             rand_int = random.randint(net_int + 1, broad_int - 1)
             sampled_ips.add(str(ipaddress.IPv4Address(rand_int)))
+            
     return list(sampled_ips)
 
 def parse_manual_data(raw_text):
@@ -246,8 +271,9 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
             do_speedtest = params.get('do_speedtest', False)
 
             if mode == 'auto':
-                subnets = SURFACE_RANGES if auto_type == 'surface' else DEEP_RANGES
-                final_ips = sample_ips_from_subnets(subnets, max_count)
+                # استفاده از بانک اطلاعاتی متشکل از هزاران ساب‌نت /24
+                subnets_pool = SURFACE_SUBNETS_24 if auto_type == 'surface' else DEEP_SUBNETS_24
+                final_ips = sample_ips_from_subnets(subnets_pool, max_count)
             else:
                 parsed_manual = parse_manual_data(manual_data)
                 final_ips = random.sample(parsed_manual, max_count) if len(parsed_manual) > max_count else parsed_manual
@@ -319,7 +345,7 @@ if __name__ == '__main__':
     server = ThreadingHTTPServer(('0.0.0.0', PORT), APIHandler)
     
     print("="*60)
-    print(f"🔥 Doctor Scanner - Running at http://localhost:{PORT}")
+    print(f"🔥 Doctor Scanner Pro - Running at http://localhost:{PORT}")
     print("📢 Channel: @Doctor_Scanner")
     print("="*60)
     
