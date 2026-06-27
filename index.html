@@ -482,7 +482,7 @@
             if (aliveIpsGlobal.length === 0) return alert('شما هنوز هیچ آی‌پی سالمی برای کپی کردن ندارید!');
             
             let sortedIps = [...aliveIpsGlobal].sort((a, b) => b.dl_speed - a.dl_speed || a.ping - b.ping);
-            const textContent = sortedIps.map(i => `${i.ip}:${i.port}`).join('\n');
+            const textContent = sortedIps.map(i => `${i.ip}`).join('\n');
             
             try {
                 await navigator.clipboard.writeText(textContent);
