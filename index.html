@@ -491,13 +491,13 @@
                 alert('مرورگر شما اجازه دسترسی به کلیپ‌بورد را نمی‌دهد.');
             }
         }
-
-        function renderSingleResult(item, doSpeedTest) {
+        
+                function renderSingleResult(item, doSpeedTest) {
             const tbody = document.getElementById('resultsBody');
             if (tbody.innerHTML.includes("داده‌ای وجود ندارد")) {
                 tbody.innerHTML = '';
             }
-
+        
             const tr = document.createElement('tr');
             const pingClass = item.ping < 600 ? 'badge-fast' : 'badge-slow';
             
@@ -508,11 +508,11 @@
             } else {
                 speedData = `<td style="color:var(--text-muted)">-</td><td style="color:var(--text-muted)">-</td>`;
             }
-
+        
             tr.innerHTML = `
                 <td dir="ltr">
                     <div style="display: flex; justify-content: space-between; align-items: center; max-width: 150px; margin: 0 auto;">
-                        <button class="btn-copy-mini" onclick="copySingleIp('${item.ip}:${item.port}', this)">کپی</button>
+                        <button class="btn-copy-mini" onclick="copySingleIp('${item.ip}', this)">کپی</button>
                         <span style="font-weight: bold; color: var(--text-main); margin-left: 8px;">${item.ip}</span>
                     </div>
                 </td>
