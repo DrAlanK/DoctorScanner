@@ -1,9 +1,40 @@
 import sys
+import subprocess
+import importlib
+
+# ==========================================
+# 📦 سیستم نصب خودکار کتابخانه‌های خارجی
+# ==========================================
+REQUIRED_PACKAGES = []
+
+def auto_install_packages():
+    if not REQUIRED_PACKAGES:
+        return
+    print("📦 در حال بررسی پیش‌نیازهای سیستم...")
+    for package in REQUIRED_PACKAGES:
+        try:
+            importlib.import_module(package)
+        except ImportError:
+            print(f"⚙️ در حال دانلود و نصب کتابخانه [{package}]...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+                print(f"✅ نصب {package} با موفقیت انجام شد.")
+            except Exception as e:
+                print(f"❌ خطا در نصب {package}: {e}")
+                sys.exit(1)
+
+auto_install_packages()
+
+# ==========================================
+# 🚀 وارد کردن کتابخانه‌های استاندارد پایتون
+# ==========================================
 import json
 import time
 import random
+import string
 import ipaddress
 import urllib.parse
+import urllib.request
 import base64
 import ssl
 import os
@@ -11,31 +42,65 @@ import socket
 import http.server
 import socketserver
 import concurrent.futures
+import secrets
+import webbrowser
+import threading
+
+# --- تلاش برای افزایش محدودیت سوکت‌ها ---
+try:
+    import resource
+    soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    target_limit = min(hard_limit, 8192) if hard_limit != resource.RLIM_INFINITY else 8192
+    if soft_limit < target_limit:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (target_limit, hard_limit))
+except Exception:
+    pass
 
 PORT = 8080
 
-# لیست کامل ۱۵ بلاک رسمی کلادفلر
-CLOUDFLARE_ALL_RANGES = [
-    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22",
-    "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
-    "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22",
-    "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
-    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
-]
+# --- سیستم امنیت حرفه‌ای مبتنی بر Cookie & Token ---
+ADMIN_USER = "admin"
+alphabet = string.ascii_letters + string.digits
+ADMIN_PASS = ''.join(secrets.choice(alphabet) for _ in range(10))
 
-# رنج‌های طلایی و پرکاربردتر برای اسکن سطحی (سریع)
+# --- سیستم دریافت زنده رنج‌ها ---
+def fetch_cloudflare_ips():
+    print("🌐 در حال دریافت جدیدترین رنج‌های شبکه از سرور کلادفلر...")
+    try:
+        req = urllib.request.Request(
+            "https://www.cloudflare.com/ips-v4", 
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = response.read().decode('utf-8')
+            ranges = [line.strip() for line in data.split('\n') if line.strip()]
+            if ranges:
+                print(f"✅ {len(ranges)} رنج با موفقیت دریافت شد.")
+                return ranges
+    except Exception as e:
+        print(f"⚠️ دریافت آنلاین ناموفق بود ({e}). استفاده از دیتابیس آفلاین...")
+    
+    # دیتابیس پشتیبان (آفلاین)
+    return [
+        "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22",
+        "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
+        "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22",
+        "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+        "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"
+    ]
+
+CLOUDFLARE_ALL_RANGES = fetch_cloudflare_ips()
 SURFACE_BASE_RANGES = [
-    "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "188.114.96.0/20", "162.158.0.0/15"
+    "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", 
+    "188.114.96.0/20", "162.158.0.0/15"
 ]
 
-# --- تابع تبدیل رنج‌های بزرگ به هزاران ساب‌نت /24 ---
 def expand_to_24_subnets(cidrs):
     subnets_24 = []
     for cidr in cidrs:
         try:
             network = ipaddress.IPv4Network(cidr)
             if network.prefixlen <= 24:
-                # شکستن رنج‌های بزرگ به /24
                 subnets_24.extend(list(network.subnets(new_prefix=24)))
             else:
                 subnets_24.append(network)
@@ -43,28 +108,20 @@ def expand_to_24_subnets(cidrs):
             continue
     return subnets_24
 
-# تولید هزاران رنج در زمان اجرای اولیه برنامه (بسیار سریع)
-print("⏳ در حال تولید هزاران ساب‌نت کلادفلر...")
 SURFACE_SUBNETS_24 = expand_to_24_subnets(SURFACE_BASE_RANGES)
 DEEP_SUBNETS_24 = expand_to_24_subnets(CLOUDFLARE_ALL_RANGES)
-print(f"✅ ساب‌نت‌های اسکن سطحی: {len(SURFACE_SUBNETS_24)} رنج /24 آماده شد.")
-print(f"✅ ساب‌نت‌های اسکن عمیق: {len(DEEP_SUBNETS_24)} رنج /24 آماده شد.")
-
-# ----------------- Core Network Functions ----------------- #
 
 def sample_ips_from_subnets(subnets_list, total_needed):
     sampled_ips = set()
-    if not subnets_list: return []
+    if not subnets_list: 
+        return []
     
     max_attempts = total_needed * 10
     attempts = 0
     
     while len(sampled_ips) < total_needed and attempts < max_attempts:
         attempts += 1
-        # ۱. انتخاب کاملا رندوم یک ساب‌نت /24 از بین هزاران ساب‌نت
         net = random.choice(subnets_list)
-        
-        # ۲. انتخاب یک آی‌پی رندوم از داخل همان ساب‌نت
         net_int = int(net.network_address)
         broad_int = int(net.broadcast_address)
         
@@ -77,9 +134,12 @@ def sample_ips_from_subnets(subnets_list, total_needed):
 def parse_manual_data(raw_text):
     extracted_ips = []
     tokens = raw_text.replace(',', '\n').replace(' ', '\n').split('\n')
+    
     for token in tokens:
         token = token.strip()
-        if not token: continue
+        if not token: 
+            continue
+            
         if '/' in token:
             try:
                 net = ipaddress.IPv4Network(token, strict=False)
@@ -91,30 +151,43 @@ def parse_manual_data(raw_text):
                     for _ in range(50):
                         rand_int = random.randint(net_int + 1, broad_int - 1)
                         extracted_ips.append(str(ipaddress.IPv4Address(rand_int)))
-            except: continue
+            except: 
+                continue
         else:
             try:
                 ipaddress.IPv4Address(token)
                 extracted_ips.append(token)
-            except: continue
+            except: 
+                continue
+                
     return list(set(extracted_ips))
 
-def verify_cloudflare_ip(ip, port, timeout_sec, do_speedtest):
+# ----------------- Core Network Functions ----------------- #
+
+def verify_cloudflare_ip(ip, port, timeout_sec, payload_mb, custom_sni):
     protocol = "https" if port in [443, 8443, 2053, 2083, 2087, 2096] else "http"
     start_time = time.time()
+    colo = "???"
     
     try:
-        sock = socket.create_connection((ip, port), timeout=timeout_sec)
-        if protocol == "https":
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            sock = ctx.wrap_socket(sock, server_hostname="speed.cloudflare.com")
-        
-        req = b"GET / HTTP/1.1\r\nHost: speed.cloudflare.com\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n"
-        sock.sendall(req)
-        header_data = sock.recv(2048)
-        sock.close()
+        with socket.create_connection((ip, port), timeout=timeout_sec) as sock:
+            if protocol == "https":
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                sock = ctx.wrap_socket(sock, server_hostname=custom_sni)
+            
+            # درخواست هدر برای استخراج دیتاسنتر
+            req = f"GET / HTTP/1.1\r\nHost: {custom_sni}\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n".encode()
+            sock.sendall(req)
+            header_data = sock.recv(2048)
+            
+            # استخراج نام دیتاسنتر (Colo) از هدر CF-RAY
+            header_str = header_data.decode('utf-8', errors='ignore')
+            for line in header_str.split('\r\n'):
+                if line.lower().startswith('cf-ray:'):
+                    colo = line.split('-')[-1].strip()
+                    break
 
         if b"cloudflare" not in header_data.lower() and b"cf-ray" not in header_data.lower():
             return None
@@ -122,81 +195,68 @@ def verify_cloudflare_ip(ip, port, timeout_sec, do_speedtest):
         ping_ms = int((time.time() - start_time) * 1000)
         dl_speed, ul_speed = 0.0, 0.0
         
+        do_speedtest = payload_mb > 0
         if do_speedtest:
-            # --- تست دانلود ---
+            target_bytes = payload_mb * 1024 * 1024
             try:
-                dl_sock = socket.create_connection((ip, port), timeout=timeout_sec)
-                if protocol == "https":
-                    dl_sock = ctx.wrap_socket(dl_sock, server_hostname="speed.cloudflare.com")
-                
-                req_dl = b"GET /__down?bytes=150000 HTTP/1.1\r\nHost: speed.cloudflare.com\r\nConnection: close\r\n\r\n"
-                dl_sock.sendall(req_dl)
-                
-                dl_st_time = time.time()
-                bytes_recv = 0
-                dl_sock.settimeout(1.5) 
-                while True:
-                    chunk = dl_sock.recv(16384)
-                    if not chunk: break
-                    bytes_recv += len(chunk)
-                el = time.time() - dl_st_time
-                if el > 0: dl_speed = round((bytes_recv * 8 / 1000000) / el, 2)
-                dl_sock.close()
-            except Exception:
+                with socket.create_connection((ip, port), timeout=timeout_sec) as dl_sock:
+                    if protocol == "https":
+                        dl_sock = ctx.wrap_socket(dl_sock, server_hostname=custom_sni)
+                    
+                    req_dl = f"GET /__down?bytes={target_bytes} HTTP/1.1\r\nHost: {custom_sni}\r\nConnection: close\r\n\r\n".encode()
+                    dl_sock.sendall(req_dl)
+                    dl_sock.settimeout(timeout_sec)
+                    _ = dl_sock.recv(1024) # رد کردن هدرها
+                    
+                    dl_st_time = time.time()
+                    bytes_recv = 0
+                    
+                    while True:
+                        if (time.time() - dl_st_time) > 1.5: 
+                            break
+                        chunk = dl_sock.recv(32768)
+                        if not chunk: 
+                            break
+                        bytes_recv += len(chunk)
+                        
+                    el = time.time() - dl_st_time
+                    if el > 0 and bytes_recv > 0: 
+                        dl_speed = round((bytes_recv * 8 / 1000000) / el, 2)
+            except Exception: 
                 pass 
-
-            # --- تست آپلود ---
-            try:
-                ul_sock = socket.create_connection((ip, port), timeout=timeout_sec)
-                if protocol == "https":
-                    ul_sock = ctx.wrap_socket(ul_sock, server_hostname="speed.cloudflare.com")
-                
-                ul_payload = b"x" * 100000 # ارسال 100 کیلوبایت داده فیک
-                req_ul = f"POST /__up HTTP/1.1\r\nHost: speed.cloudflare.com\r\nContent-Length: {len(ul_payload)}\r\nConnection: close\r\n\r\n".encode()
-                
-                ul_st = time.time()
-                ul_sock.sendall(req_ul + ul_payload)
-                ul_sock.settimeout(1.5)
-                ul_resp = ul_sock.recv(1024)
-                
-                ul_el = time.time() - ul_st
-                if ul_el > 0 and b"HTTP/" in ul_resp:
-                    ul_speed = round((len(ul_payload) * 8 / 1000000) / ul_el, 2)
-                ul_sock.close()
-            except Exception:
-                pass
         
         return {
             "ip": ip, "port": port, "ping": ping_ms, 
-            "dl_speed": dl_speed, "ul_speed": ul_speed
+            "dl_speed": dl_speed, "ul_speed": ul_speed, "colo": colo
         }
         
-    except Exception:
+    except Exception: 
         return None
-
-# ----------------- Injection Functions ----------------- #
 
 def get_best_ip_for_port(alive_ips, target_port):
     suitable_ips = [ip for ip in alive_ips if ip.get('port') == target_port]
-    if not suitable_ips: return None
+    if not suitable_ips: 
+        return None
     suitable_ips.sort(key=lambda x: (-x.get('dl_speed', 0), x.get('ping', 9999)))
     return suitable_ips[0]['ip']
 
-def fix_b64_padding(s):
+def fix_b64_padding(s): 
     return s + '=' * (-len(s) % 4)
 
-def robust_config_injector(line, alive_ips):
+def robust_config_injector(line, alive_ips, custom_sni):
     try:
         parsed = urllib.parse.urlparse(line)
         scheme = parsed.scheme.lower()
+        
         if scheme == 'vmess':
             b64_str = fix_b64_padding(parsed.netloc + parsed.path)
             conf = json.loads(base64.urlsafe_b64decode(b64_str).decode('utf-8'))
             port = int(conf.get('port', 443))
             best_ip = get_best_ip_for_port(alive_ips, port)
+            
             if best_ip:
                 conf['add'] = best_ip
-                conf['sni'] = conf.get('host', 'speed.cloudflare.com')
+                conf['sni'] = custom_sni # اعمال اتوماتیک SNI
                 new_b64 = base64.urlsafe_b64encode(json.dumps(conf).encode('utf-8')).decode('utf-8').rstrip('=')
                 return f"vmess://{new_b64}"
             return f"{line} # (No IP for port {port})"
@@ -204,17 +264,15 @@ def robust_config_injector(line, alive_ips):
         if scheme in ['vless', 'trojan']:
             port = parsed.port if parsed.port else 443
             best_ip = get_best_ip_for_port(alive_ips, port)
+            
             if best_ip:
-                old_netloc = parsed.netloc
-                if '@' in old_netloc:
-                    user_pass, host_port = old_netloc.split('@', 1)
-                    new_netloc = f"{user_pass}@{best_ip}:{port}"
-                else:
-                    new_netloc = f"{best_ip}:{port}"
+                user_pass = parsed.netloc.split('@')[0] if '@' in parsed.netloc else ''
+                new_netloc = f"{user_pass}@{best_ip}:{port}" if user_pass else f"{best_ip}:{port}"
                 
                 query_dict = dict(urllib.parse.parse_qsl(parsed.query))
-                query_dict['sni'] = query_dict.get('sni', query_dict.get('host', ''))
-                if 'fragment' not in query_dict and scheme == 'vless':
+                query_dict['sni'] = custom_sni # اعمال اتوماتیک SNI
+                
+                if 'fragment' not in query_dict and scheme == 'vless': 
                     query_dict['fragment'] = '10-20,10-20,tlshello'
                 
                 new_query = urllib.parse.urlencode(query_dict)
@@ -223,12 +281,70 @@ def robust_config_injector(line, alive_ips):
             return f"{line} # (No IP for port {port})"
 
         return line 
-    except Exception:
+    except Exception: 
         return line
 
 # ----------------- Pure Python Web Server ----------------- #
 
 class APIHandler(http.server.SimpleHTTPRequestHandler):
+    
+    def check_auth(self, is_api=False):
+        cookie_header = self.headers.get('Cookie', '')
+        
+        if f"auth_token={ADMIN_PASS}" in cookie_header: 
+            return True
+            
+        if is_api:
+            self.send_response(401)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"error": "Unauthorized"}')
+        else:
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            
+            login_html = f"""
+            <!DOCTYPE html>
+            <html lang="fa" dir="rtl">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Login | Doctor Scanner Pro</title>
+                <style>
+                    body {{ background-color: #050505; color: #d4af37; font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
+                    .box {{ background: #0f0f0f; padding: 30px; border: 1px solid #d4af37; border-radius: 12px; text-align: center; box-shadow: 0 0 15px rgba(212, 175, 55, 0.2); width: 90%; max-width: 350px; }}
+                    h2 {{ margin-top: 0; text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }}
+                    input {{ width: 100%; box-sizing: border-box; padding: 12px; margin: 15px 0; background: #1a1a1a; border: 1px solid #332900; color: #fff; border-radius: 8px; text-align: center; outline: none; font-size: 16px; letter-spacing: 2px; }}
+                    input:focus {{ border-color: #ffd700; box-shadow: 0 0 8px rgba(212, 175, 55, 0.3); }}
+                    button {{ width: 100%; background: #d4af37; color: #000; border: none; padding: 12px; font-weight: bold; border-radius: 8px; font-size: 15px; cursor: pointer; transition: 0.3s; }}
+                    button:hover {{ background: #ffd700; }}
+                </style>
+            </head>
+            <body>
+                <div class="box">
+                    <h2>🔒 منطقه امنیتی</h2>
+                    <p style="color: #888; font-size: 13px;">پسورد موقت را وارد کنید</p>
+                    <input type="password" id="pass" placeholder="******" onkeypress="if(event.key === 'Enter') login()">
+                    <button onclick="login()">ورود به پنل</button>
+                </div>
+                <script>
+                    function login() {{
+                        let p = document.getElementById('pass').value.trim();
+                        if(p) {{
+                            document.cookie = "auth_token=" + p + "; path=/; max-age=86400";
+                            window.location.href = '/';
+                        }} else {{
+                            alert('لطفا پسورد را وارد کنید!');
+                        }}
+                    }}
+                </script>
+            </body>
+            </html>
+            """
+            self.wfile.write(login_html.encode('utf-8'))
+        return False
+
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
@@ -240,93 +356,129 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == '/':
+        parsed_path = urllib.parse.urlparse(self.path)
+        query_params = urllib.parse.parse_qs(parsed_path.query)
+        
+        # هندل کردن لینک جادویی برای ورود خودکار
+        if 'token' in query_params and query_params['token'][0] == ADMIN_PASS:
+            self.send_response(302)
+            self.send_header('Location', '/')
+            self.send_header('Set-Cookie', f'auth_token={ADMIN_PASS}; Path=/; Max-Age=86400')
+            self.end_headers()
+            return
+
+        if not self.check_auth(is_api=False): 
+            return
+            
+        if parsed_path.path == '/':
             self.path = '/index.html'
-        try:
+        else:
+            self.path = parsed_path.path
+            
+        try: 
             return super().do_GET()
         except Exception:
             self.send_response(404)
             self.end_headers()
 
     def do_POST(self):
+        if not self.check_auth(is_api=True): 
+            return
+            
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length)
         
-        try:
+        try: 
             params = json.loads(post_data.decode('utf-8'))
         except:
             self.send_response(400)
             self.end_headers()
-            self.wfile.write(b'{"error": "Invalid JSON"}')
             return
 
         if self.path == '/api/scan':
             mode = params.get('mode', 'auto')
             ports_to_test = params.get('ports', [443])
-            workers = min(int(params.get('workers', 60)), 200) 
+            workers = min(int(params.get('workers', 60)), 300) 
             timeout_sec = int(params.get('timeout', 1200)) / 1000.0
             max_count = int(params.get('max_count', 80))
             auto_type = params.get('auto_type', 'surface')
             manual_data = params.get('manual_data', '')
-            do_speedtest = params.get('do_speedtest', False)
+            
+            custom_sni = params.get('custom_sni', 'speed.cloudflare.com').strip()
+            if not custom_sni: 
+                custom_sni = 'speed.cloudflare.com'
+            payload_mb = int(params.get('payload_size_mb', 0))
 
             if mode == 'auto':
-                # استفاده از بانک اطلاعاتی متشکل از هزاران ساب‌نت /24
-                subnets_pool = SURFACE_SUBNETS_24 if auto_type == 'surface' else DEEP_SUBNETS_24
-                final_ips = sample_ips_from_subnets(subnets_pool, max_count)
+                pool = SURFACE_SUBNETS_24 if auto_type == 'surface' else DEEP_SUBNETS_24
+                final_ips = sample_ips_from_subnets(pool, max_count)
             else:
-                parsed_manual = parse_manual_data(manual_data)
-                final_ips = random.sample(parsed_manual, max_count) if len(parsed_manual) > max_count else parsed_manual
+                parsed_ips = parse_manual_data(manual_data)
+                if len(parsed_ips) > max_count:
+                    final_ips = random.sample(parsed_ips, max_count)
+                else:
+                    final_ips = parsed_ips
 
             tasks_info = [(ip, port) for ip in final_ips for port in ports_to_test]
             total_tasks = len(tasks_info)
 
-            # تنظیم هدرها برای استریم کردن دیتا (NDJSON)
             self.send_response(200)
             self.send_header('Content-Type', 'application/x-ndjson')
             self.send_header('Cache-Control', 'no-cache')
             self.end_headers()
 
             completed_count = 0
-            
+            class ScanContext:
+                def __init__(self): 
+                    self.is_cancelled = False
+                    
+            current_scan_context = ScanContext()
+
+            def safe_verify(ip, port, timeout, payload, sni, context):
+                if context.is_cancelled: 
+                    return None
+                return verify_cloudflare_ip(ip, port, timeout, payload, sni)
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
                 future_to_ip = {
-                    executor.submit(verify_cloudflare_ip, ip, port, timeout_sec, do_speedtest): (ip, port) 
+                    executor.submit(safe_verify, ip, port, timeout_sec, payload_mb, custom_sni, current_scan_context): (ip, port) 
                     for ip, port in tasks_info
                 }
                 
                 for future in concurrent.futures.as_completed(future_to_ip):
+                    if current_scan_context.is_cancelled: 
+                        break
+                        
                     completed_count += 1
                     res = None
-                    try:
+                    try: 
                         res = future.result()
-                    except Exception:
+                    except Exception: 
                         pass
                     
-                    # مخابره لحظه‌ای نتیجه هر آی‌پی به فرانت‌اند
-                    chunk = {
-                        "completed": completed_count,
-                        "total": total_tasks,
-                        "result": res
-                    }
-                    
                     try:
-                        self.wfile.write((json.dumps(chunk) + '\n').encode('utf-8'))
+                        chunk_str = json.dumps({"completed": completed_count, "total": total_tasks, "result": res}) + '\n'
+                        self.wfile.write(chunk_str.encode('utf-8'))
                         self.wfile.flush()
                     except BrokenPipeError:
-                        # اگر کاربر وسط اسکن تب رو بست، پردازش قطع بشه
-                        break
+                        current_scan_context.is_cancelled = True
+                        for f in future_to_ip: 
+                            f.cancel()
+                        break 
 
         elif self.path == '/api/inject':
             configs_raw = params.get('configs', '')
             alive_ips = params.get('ips', [])
+            custom_sni = params.get('custom_sni', 'speed.cloudflare.com').strip()
+            if not custom_sni: 
+                custom_sni = 'speed.cloudflare.com'
+            
             injected_list = []
-
             for line in configs_raw.strip().split('\n'):
                 line = line.strip()
-                if not line: continue
-                injected_list.append(robust_config_injector(line, alive_ips))
-
+                if line:
+                    injected_list.append(robust_config_injector(line, alive_ips, custom_sni))
+                    
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -338,20 +490,50 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
+def auto_update_from_git():
+    print("🔄 در حال بررسی آپدیت جدید از مخزن گیت...")
+    try:
+        res = subprocess.run(["git", "pull"], capture_output=True, text=True)
+        if "Already up to date" in res.stdout or "Already up-to-date" in res.stdout: 
+            print("✅ اسکریپت شما کاملاً بروز است.")
+        elif res.returncode == 0: 
+            print("🚀 آپدیت جدید با موفقیت دریافت شد!")
+    except Exception: 
+        pass
+
+def open_browser_auto(magic_url):
+    time.sleep(1.5)
+    termux_prefix = os.environ.get("PREFIX", "")
+    try:
+        if "com.termux" in termux_prefix: 
+            os.system(f"termux-open-url '{magic_url}'")
+        else: 
+            webbrowser.open(magic_url)
+    except Exception: 
+        pass
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    
+    # آپدیت خودکار
+    auto_update_from_git()
     
     socketserver.TCPServer.allow_reuse_address = True
     server = ThreadingHTTPServer(('0.0.0.0', PORT), APIHandler)
     
+    # تولید لینک ورود مستقیم
+    magic_link = f"http://localhost:{PORT}/?token={ADMIN_PASS}"
+    
+    # باز کردن مرورگر
+    threading.Thread(target=open_browser_auto, args=(magic_link,), daemon=True).start()
+    
     print("="*60)
-    print(f"🔥 Doctor Scanner Pro - Running at http://localhost:{PORT}")
-    print("📢 Channel: @Doctor_Scanner")
+    print(f"🔥 Doctor Scanner Pro - Advanced Network Protocol")
+    print("-" * 60)
+    print(f"🚀 Direct Auto-Login URL:\n   \033[96m{magic_link}\033[0m")
     print("="*60)
     
-    try:
+    try: 
         server.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[!] Server stopped.")
-        server.server_close()
+    except KeyboardInterrupt: 
         sys.exit(0)
